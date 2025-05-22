@@ -1,16 +1,26 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import sqlite3
 
 app = Flask(__name__)
 
 @app.route("/getCoinsData")
 def get_coins_data():
+    # Captura o parâmetro de query: /getCoinsData?order=desc
+    order = request.args.get("order", default="asc").lower()
+
+    # Valida o valor do parâmetro
+    if order not in ["asc", "desc"]:
+        return jsonify({"error": "Parâmetro 'order' deve ser 'asc' ou 'desc'"}), 400
+
     # Conecta ao banco
     conn = sqlite3.connect("data.db")
     cursor = conn.cursor()
 
-    # Busca todos os registros
-    cursor.execute("SELECT id, timestamp, name, change_24h FROM coins")
+    # Executa a query com a ordenação desejada
+    cursor.execute(f"""
+            SELECT id, timestamp, name, change_24h FROM coins
+            ORDER BY timestamp {order.upper()}
+        """)
     rows = cursor.fetchall()
 
     # Converte os dados para dicionários
@@ -23,10 +33,7 @@ def get_coins_data():
             "change_24h": row[3]
         })
 
-    # Fecha a conexão
     conn.close()
-
-    # Retorna como JSON
     return jsonify(coins)
 
 if __name__ == "__main__":
